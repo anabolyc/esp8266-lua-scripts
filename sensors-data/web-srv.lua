@@ -2,12 +2,15 @@ local M = {};
 
 local started = false;
 
-M.start = function(_port, PIN_DHT, cdio_callback) 
+M.start = function(_port, PIN_DHT, PIN_BMP_SDA, PIN_BMP_SCL, cdio_callback) 
     if started then
         print("Warning: server already started, exiting...");
         return;
     end
-
+    
+    local bmp_init = bme280.init(PIN_BMP_SDA, PIN_BMP_SCL);
+    print ("bmp_init", bmp_init);
+    
     print("Listenting on ", _port);
     srv = net.createServer(net.TCP);
     srv:listen(_port, function(conn)
@@ -29,11 +32,22 @@ M.start = function(_port, PIN_DHT, cdio_callback)
                         buf = buf.."{\r\n";
                         local status, temp, humi, temp_decimal, humi_decimal = dht.read(PIN_DHT)
                         local ppm = cdio_callback();
+                        local pres, temp_2 = bme280.baro();
                         
                         if (status == dht.OK) then
                             --print("dht.OK: ", dht.OK);
-                            buf = buf..'\t"temp": "'..temp..'",\r\n';
+                            if (temp_2 == nil) then
+                                buf = buf..'\t"temp": "null",\r\n';
+                            else
+                                buf = buf..'\t"temp": "'..temp_2..'",\r\n';
+                            end
                             buf = buf..'\t"humidity": "'..humi..'",\r\n';
+                            if (pres == nil) then
+                                buf = buf..'\t"pressure": "null",\r\n';
+                            else
+                                buf = buf..'\t"pressure": "'..pres..'",\r\n';
+                            end
+                            
                             if ppm == nil then
                                 buf = buf..'\t"cdio": "null",\r\n';
                             else
