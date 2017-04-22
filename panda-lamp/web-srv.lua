@@ -41,7 +41,8 @@ local getState = function(PIN_SW)
     return value == gpio.LOW ;
 end
 
-M.start = function(_port, PIN_SW) 
+M.start = function(_port, PIN_SW, fs_srv) 
+
     if started then
         print("Warning: server already started, exiting...");
         return;
@@ -57,8 +58,9 @@ M.start = function(_port, PIN_SW)
         conn:on("receive", function(sck, request)
             --print(request);
             local _, __, method, path = string.find(request, "([A-Z]+) (.-) HTTP");
+            if (path == "/") then path = "/index.html" end
             
-            print(method, path);
+            print(method, path, "fs = ", fs_srv.exists(path));
             
             local buf = "";
             if (path == "/on") and (method == "POST") then
@@ -76,21 +78,26 @@ M.start = function(_port, PIN_SW)
             elseif (path == "/state") and (method == "GET") then
                 local state = getState(PIN_SW);
                 buf = OK("{\"state\":"..(state and "true" or "false").."}");
-                
+            elseif (fs_srv.exists(path)) and (method == "GET") then
+                fs_srv.serve(path, sck, function(body, next) 
+                    conn:send(body, next);
+                end);
+                buf = "";
             else
                 buf = FAIL();
             end
---        buf = "HTTP/1.1 405 Method Not Allowed\r\n";
---        buf = buf.."Allow:HEAD,GET\r\n";
---        buf = buf.."Connection: close\r\n\r\n";
 
-            conn:send(buf, function()
-                sck:close();
-                collectgarbage();
-            end);
+            if (buf ~= "") then
+                conn:send(buf, function()
+                    print("conn:close");
+                    sck:close();
+                    collectgarbage();
+                end);
+            end
         end)
     end);
     started = true;
+    print("API web server started");
 end
 
 return M;
