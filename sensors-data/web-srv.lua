@@ -2,7 +2,7 @@ local M = {};
 
 local started = false;
 
-M.start = function(_port, PIN_DHT, PIN_BMP_SDA, PIN_BMP_SCL, cdio_callback) 
+M.start = function(_port, PIN_BMP_SDA, PIN_BMP_SCL, cdio_callback) 
     if started then
         print("Warning: server already started, exiting...");
         return;
@@ -18,8 +18,8 @@ M.start = function(_port, PIN_DHT, PIN_BMP_SDA, PIN_BMP_SCL, cdio_callback)
         conn:on("receive", function(sck, request)
             --print(request);
             local _, __, method, path = string.find(request, "([A-Z]+) (.-) HTTP");
-            
-            print(method, path);
+
+            if DEBUG then print(method, path); end
             
             local buf;
             if path == "/data" then
@@ -30,37 +30,37 @@ M.start = function(_port, PIN_DHT, PIN_BMP_SDA, PIN_BMP_SCL, cdio_callback)
     
                     if method == "GET" then
                         buf = buf.."{\r\n";
-                        local status, temp, humi, temp_decimal, humi_decimal = dht.read(PIN_DHT)
+
                         local ppm = cdio_callback();
-                        local pres, temp_2 = bme280.baro();
-                        
-                        if (status == dht.OK) then
-                            --print("dht.OK: ", dht.OK);
-                            if (temp_2 == nil) then
-                                buf = buf..'\t"temp": "null",\r\n';
-                            else
-                                buf = buf..'\t"temp": "'..temp_2..'",\r\n';
-                            end
-                            buf = buf..'\t"humidity": "'..humi..'",\r\n';
-                            if (pres == nil) then
-                                buf = buf..'\t"pressure": "null",\r\n';
-                            else
-                                buf = buf..'\t"pressure": "'..pres..'",\r\n';
-                            end
-                            
-                            if ppm == nil then
-                                buf = buf..'\t"cdio": "null",\r\n';
-                            else
-                                buf = buf..'\t"cdio": "'..ppm..'",\r\n';
-                            end
-                            buf = buf..'\t"error": null';
-                        elseif (status == dht.ERROR_CHECKSUM) then
-                            --print("dht.ERROR_CHECKSUM: ", dht.ERROR_CHECKSUM);
-                            buf = buf..'\t"error": "DHT Checksum error"';
-                        elseif (status == dht.ERROR_TIMEOUT) then
-                            --print("dht.ERROR_TIMEOUT: ", dht.ERROR_TIMEOUT);
-                            buf = buf..'\t"error": "DHT Time out"';
+                        local pres, temp = bme280.baro();
+                        local humi, temp_2 = bme280.humi();
+                       
+                        if (temp_2 == nil) then
+                            buf = buf..'\t"temp": "null",\r\n';
+                        else
+                            buf = buf..'\t"temp": "'..temp..'",\r\n';
                         end
+
+                        if (pres == nil) then
+                            buf = buf..'\t"pressure": "null",\r\n';
+                        else
+                            buf = buf..'\t"pressure": "'..pres..'",\r\n';
+                        end
+                        
+                        if (humi == nil) then
+                            buf = buf..'\t"humidity": "null",\r\n';
+                        else
+                            buf = buf..'\t"humidity": "'..humi..'",\r\n';
+                        end
+                        
+                        if ppm == nil then
+                            buf = buf..'\t"cdio": "null",\r\n';
+                        else
+                            buf = buf..'\t"cdio": "'..ppm..'",\r\n';
+                        end
+                        
+                        buf = buf..'\t"error": null';
+
                         buf = buf.."\r\n}\r\n";
                     end
                 else

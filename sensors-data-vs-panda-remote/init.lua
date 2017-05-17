@@ -1,12 +1,12 @@
 local _ssid = "wifi-12-private";
 local _pass = "9263777101";
-local _addr = "http://192.168.1.92:8080/toggle"
+local _addr = "http://192.168.1.92:80/toggle"
 
 local LED_TMR_ID = 1;
 local CDI_TMR_ID = 2;
 
 local PIN_SW  = 2; -- GPIO_4
-local PIN_DHT = 7; -- GPIO13 
+--local PIN_DHT = 7; -- GPIO13 
 local PIN_LED = 4;  
 local PIN_CDI = 1; -- GPIO_5
 local PIN_SDA = 6; -- GPIO12
@@ -47,7 +47,7 @@ wifi.start(_ssid, _pass,
                 toggle.toggle(_addr);
             end
         );
-        web_srv.start(8080, PIN_DHT, PIN_SDA, PIN_SCL,
+        web_srv.start(8080, PIN_SDA, PIN_SCL,
             function() 
                 return ppm;
             end
